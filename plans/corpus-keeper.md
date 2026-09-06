@@ -243,11 +243,11 @@ cloud folder like Google Drive or iCloud?"). Yes. lameta is a plain-files applic
 server and no licence term about location; a project folder in iCloud Drive or Google Drive is an
 ordinary folder to it. The keeper is the same. Three conditions make it safe, and the keeper checks
 the first two before it writes:
-1. **Files must really be on disk, not placeholders.** iCloud's "Optimise Mac Storage" and Google
-   Drive's "Stream files" evict large files to the cloud and leave stubs; lameta and the keeper then
-   see a missing WAV. Mark the project folder "Keep Downloaded" (iCloud) or "Available offline" /
-   mirror mode (Drive) on every machine that opens it; the keeper refuses to run when it finds a
-   stub (`.icloud` placeholder or a zero-length Drive stub).
+1. **Files may not be on disk, and that must never jam or crash anything** (Seth, 2026-09-06).
+   iCloud's "Optimise Mac Storage" and Google Drive's "Stream files" evict large files and leave
+   placeholders; the keeper treats that as a normal state, not an error — see *Cloud-synced
+   folders* below. Marking the project folder "Keep Downloaded" (iCloud) or "Available offline"
+   / mirror mode (Drive) is advice the keeper gives, not a precondition it enforces.
 2. **One writer at a time.** Cloud sync merges nothing; two machines editing the same `.session`
    produce a conflicted copy. The keeper takes a lock file in the project folder while it writes
    and will not run while lameta's own lock is present; a person edits in lameta on one machine.
@@ -259,6 +259,48 @@ the first two before it writes:
 Google Drive is the better fit if collaborators outside Apple need the folder; iCloud is the better
 fit for Seth alone because the corpus is already there. Either way the archive deposit is a zip of
 session folders made from the Mac.
+
+**Cloud-synced folders: files that are not there yet** (Seth, 2026-09-06: "gracefully handle a
+drive/cloud storage sync app, where the user might not be storing all files (especially media
+files) offline all the time … without jamming and crashing"). The rule is that every part of the
+system distinguishes three states for a file and keeps working in all three:
+
+| State | How it is detected | What the keeper does |
+|---|---|---|
+| present | ordinary file, size stable for 2 s | everything |
+| placeholder (in the cloud, not downloaded) | macOS: `.<name>.icloud` stub beside the name; Windows: the cloud-files attributes (`RECALL_ON_DATA_ACCESS`, `OFFLINE`) that OneDrive, iCloud for Windows and Drive's stream mode all set; Drive on macOS: the same via `xattr` | metadata work proceeds; byte work is deferred and listed |
+| missing | neither of the above | reported, never guessed |
+
+Rules that follow, for the keeper, the Tauri segmenter's audio-folder index (#49) and the migration
+tool alike:
+- **Never open a placeholder in the sync's main path.** On Windows, merely reading a placeholder
+  triggers a download that can block for minutes; that is the jam. Reads go through one helper
+  that checks the state first, and byte work on a placeholder is queued, not attempted.
+- **Metadata does not need bytes.** Sessions, `.person` files, the timed FLExText, the ELAN file
+  (it references the WAV by name), `corpus-status.json` and lameta status are all produced with the
+  recording absent. Only three things need bytes: verifying a copied file by hash, embedding audio in
+  a listening page, and packing a device bundle. Those are marked "waiting for <file> (in the
+  cloud)" in the report and done on the next run once the file is present.
+- **A Fetch action, never automatic.** The report and the Tauri app list every placeholder with a
+  *Download* button: macOS runs `brctl download <path>`; Windows opens the file for read with a
+  timeout in a background thread, which is how the cloud-files API recalls it; Drive on macOS is
+  told through its own *Available offline* command when the user prefers. A one-click *Keep this
+  project downloaded* pins the whole lameta folder. Progress is shown; the user can cancel; nothing
+  else waits on it.
+- **Sync noise is expected, not fatal.** Watchers (phase 2) debounce until a file's size has been
+  stable for two seconds, ignore sync temporaries (`.tmp`, `.crdownload`, `~$`, `.icloud`,
+  conflicted-copy names), treat sharing violations and permission errors during a sync as "try
+  again in a minute" with backoff, and log rather than throw. Conflicted copies of `.session`
+  files are reported by name so the person can pick one; the keeper never picks for them.
+- **Timeouts everywhere bytes are touched:** no read of a media file runs without one, and a
+  timeout marks the file "stalled" in the report instead of stopping the run.
+- **The suite's own apps are unaffected** by design: devices receive bundles by upload, never a
+  cloud path; only the desktop pieces (keeper, Tauri app, migration) see cloud folders.
+
+Verification adds: a fixture folder with a real file, an `.icloud` stub and a Windows placeholder
+(created with the cloud-files attributes on the VM); Sync must finish, produce every metadata file,
+list the two absent files, and never call open on them; a placeholder that appears mid-run is
+handled the same way.
 
 Multiple recordings for one text (FLEx allows one `CmMediaURI` per line): all live in the same
 session folder; each gets its own `.meta` and its own `.annotations.eaf`; the FLExText carries the
