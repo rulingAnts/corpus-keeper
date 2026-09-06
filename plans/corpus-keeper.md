@@ -222,7 +222,8 @@ Sessions/<Abbreviation-or-slug>/
                                    overwrite it; it reports the conflict and offers to import the ELAN
                                    timing into FLEx through the suite's EAF reader first.
   <slug>.flextext                  timed FLExText export — refreshed each sync (also the rollback copy)
-  <slug>.preview.html              the listening page — refreshed each sync (optional, off by default)
+  (no listening page)              .preview.html is NOT kept in the archive or the session folder (Seth,
+                                   2026-09-06); it is generated on demand — see *Listening pages* below
 People/<Name>/
   <Name>.person                    generated from CmPerson once; keeper-owned fields updated
   <Name>_Consent.wav               from the consent collector's assent clip
@@ -237,6 +238,17 @@ thereafter only these fields are rewritten: `title`, `participants`, `genre`, `d
 verified by size and hash, never re-copied, and FLEx's `CmMediaURI` is rewritten to the session path.
 Session `status` is left to the researcher, but the keeper proposes `In Progress` on creation and
 never changes it afterwards.
+
+**Listening pages** (Seth, 2026-09-06: "I don't think we need .preview.html to be SAVED in our archive
+or lameta session folders, but easy to generate … a system-wide setting for that that can change,
+or the ability to bulk generate them throughout the corpus later"). The page is a derived,
+self-contained file that embeds the audio, so it doubles the media in any folder that keeps it.
+Default: not written anywhere by Sync. Generation is one click per text (the panel's Files menu and
+the keeper's report both offer it) into a folder the user chooses, and a project-wide setting
+`listeningPages: none | working-folder | session-folder` changes that default later without
+touching anything else. A `Generate listening pages` command produces them for every text (or a
+filter: genre, speaker, status) in one run, for the day a whole corpus needs them. Whatever the
+setting, the page is never counted as an archive file and never referenced from a session.
 
 **Where the lameta project folder lives** (Seth, 2026-09-06: "can we store our lameta folders in a
 cloud folder like Google Drive or iCloud?"). Yes. lameta is a plain-files application with no
@@ -335,12 +347,33 @@ the ELAN file references, both in the session.
 ## Changes to the FLExText suite (small, all in the browser code)
 
 **Consent collection** (Seth: "if we need to modify our consent collection process, work that in"):
-1. **Consent is per person, not per text.** The consent collector gains a *who is consenting* step:
-   a person chosen from a list the researcher pushed to the device (the project's People, from FLEx
-   via the keeper → panel settings), or typed as a new name. The receipt carries the person's name
-   and FLEx person GUID when known. One assent recording can cover several texts by the same
+1. **Consent is per person, with granular permission per text** (Seth, 2026-09-06: "consent to be
+   per speaker, rather than per text. Though we may need a way to track granular permission for
+   specific texts, because the speaker may allow it for some texts and not for others"). The model:
+   - A **person consent record** (the recorded assent plus its receipt) with a **scope**: `all`
+     (everything this person records for the project), or `listed` (only the texts named in the
+     record). A speaker who later says "not that one" gets an **exclusion** added to the same
+     record (text GUID, date, how it was expressed), never a deletion, so the history is kept.
+   - A text is *consented* when its speaker has a record, the text is inside the record's scope and
+     not excluded, and the researcher has not placed a **hold** on it (the checklist plan's
+     `consentHold`: the researcher may narrow, never widen). Those are four distinct states the
+     status file and the checklist show by name: consented / no record / excluded by speaker /
+     held by researcher.
+   - Where it lives: the person record and its recording in the lameta People folder
+     (`<Name>_Consent.wav` + `<Name>_Consent.json`); the per-text outcome is derived, never
+     stored, except that the keeper proposes the lameta session's built-in `access` value from it
+     when it creates a session (consented → the project's default open access; otherwise the
+     restricted value), after which `access` is lameta's own, as everywhere else in this plan. FLEx
+     has no home for any of this and is not asked to hold it.
+   The consent collector gains a *who is consenting* step: a person chosen from a list the
+   researcher pushed to the device (the project's People, from FLEx via the keeper → panel
+   settings), or typed as a new name; then a *scope* step: "this recording only" or "all my
+   recordings for this project", in the speaker's language, read from the researcher's script. The
+   receipt carries the person's name and FLEx person GUID when known, the scope, and the text GUID
+   when the scope is this recording. One assent recording can cover several texts by the same
    speaker; the collector offers "same speaker as the previous text" so nobody re-records consent per
-   text unless the researcher's script says so.
+   text unless the researcher's script says so. Exclusions and holds are entered in the researcher
+   panel (a person's Consent card lists their texts with the four states), not on the device.
 2. **The receipt records scope and access**: what was consented to (this recording / all my
    recordings for this project), the access level the speaker chose from the researcher's list
    (mapped to lameta's `access` values), the consent script's language and version, the date, the
@@ -373,7 +406,21 @@ the ELAN file references, both in the session.
    sidecar orders them under their word. The listening page may show the morpheme line later; not
    in this plan. Tests extend `test/multi-analysis-ws.test.mjs` with a morpheme fixture.
 
-**Corpus checklist** (Appendix A, adjusted): the derived steps become read-only facts imported from
+**Corpus checklist — not a separate app in the end** (Seth, 2026-09-06: "I don't think corpus
+checklist needs to stay a separate app, but once we're ready to integrate it, I'll need help
+migrating and matching my Corpus Checklist stuff"). Phase 1 keeps the checklist as the standalone
+page (Appendix A) reading `corpus-status.json`, because it exists as a plan and costs nothing to
+wire. When the keeper's status file is stable, the checklist's views (next actions, rules, the
+matrix, the health strip, the report) move into the researcher panel as a Corpus tab, reading the
+same file through the localhost bridge, and the standalone page is retired. That move includes an
+**assisted migration of Seth's existing checklist material**: whatever he has tracked so far —
+spreadsheets, notes, the checklist's own export if it has run by then — is matched to FLEx texts
+by GUID, title and abbreviation in a session with Claude, exactly like the corpus-tree migration
+(inventory → proposal → Seth reviews → apply), with unmatched rows listed rather than guessed.
+Manual ticks that survive the match become the checklist's manual steps; everything derivable is
+recomputed and the old tick is shown beside it once so disagreements are visible.
+
+**Corpus checklist data flow** (Appendix A, adjusted): the derived steps become read-only facts imported from
 `corpus-status.json` (per text: FLEx GUID, title, abbreviation, genre, speakers, consent present,
 recorded, segmented, % glossed per language, % free-translated per language, ELAN present, session
 status, lameta custom workflow fields, durations, word counts). Manual steps stay tickable. Import
@@ -445,11 +492,9 @@ Phase 2 (tray app, localhost bridge) and phase 3 (#49) follow, on the same libra
 
 ## Still Seth's to decide (not blocking phase 1)
 
-- Consent script versions and the access-level list offered to speakers (mapped to lameta's values).
-- Whether `.preview.html` belongs in the archive session or only in the working copy.
+- Consent script versions and the access-level list offered to speakers (mapped to lameta's values);
+  the wording of the two scope choices in each speaker language.
 - The session slug convention (FLEx abbreviation vs a date-based id, as lameta users often do).
-- Whether the corpus checklist stays a separate app (Appendix A) or becomes a view in the panel
-  once `corpus-status.json` exists; the import works either way.
 
 ---
 
