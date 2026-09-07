@@ -219,10 +219,14 @@ Sessions/<Abbreviation-or-slug>/
                                    forms, glosses, translations, notes, speaker names, times — with no
                                    GUIDs, object references or anything that needs FLEx to read. Whoever
                                    opens the session in ELAN in twenty years sees the whole analysis with
-                                   just the WAV beside it. Never hand-edited here: if the file is newer
-                                   than the keeper's stamp (someone edited it in ELAN), the keeper does not
-                                   overwrite it; it reports the conflict and offers to import the ELAN
-                                   timing into FLEx through the suite's EAF reader first.
+                                   just the WAV beside it. ⚠ ONE WAY ONLY (Seth, 2026-09-07): the .eaf
+                                   MIRRORS FLEx and nothing in it ever flows back. It is a generated
+                                   artifact, regenerated on every sync. If the keeper finds it changed
+                                   since its own stamp (someone edited it in ELAN), it moves that copy
+                                   aside as `<slug>.wav.annotations.edited-<date>.eaf` — never deleted,
+                                   because somebody's work is in it — says so in the report, and writes
+                                   the fresh mirror. Analysis belongs in FLEx or in the suite's own apps;
+                                   the mirror is for reading and archiving.
   <slug>.flextext                  timed FLExText export — refreshed each sync (also the rollback copy)
   (no listening page)              .preview.html is NOT kept in the archive or the session folder (Seth,
                                    2026-09-06); it is generated on demand — see *Listening pages* below
@@ -407,6 +411,14 @@ the ELAN file references, both in the session.
    optional and off by default. Words without morphemes simply have no morph annotations. The `.pfsx`
    sidecar orders them under their word. The listening page may show the morpheme line later; not
    in this plan. Tests extend `test/multi-analysis-ws.test.mjs` with a morpheme fixture.
+**⚠ THE ELAN MIRROR IS ONE WAY** (Seth, 2026-09-07: "we're not planning to have ELAN
+exports/mirrors be a round-trip. That should be one way — ELAN file mirrors FLEx"). Everything the
+keeper writes as `.eaf` is generated FROM FLEx and read by people and archives; no keeper path reads
+an `.eaf` back into FLEx, and none should be added. This does not touch the suite's own ELAN
+*import*, which is a different thing entirely: a user who segmented in ELAN can open their `.eaf` in
+the Audio Segmenter or the Paragraph Analysis Tool as an input file they chose to bring. That is a
+person importing their own work, not the corpus mirroring itself backwards.
+
 8. **The ELAN paragraph tier mirrors FLEx's real paragraphs** (Seth, 2026-09-07: "one of the things
    we want it to do eventually is automatically mirror the paragraph and phrase tiers of the FLEx
    data in the ELAN eaf file (which our app already exports with both tiers)" — recorded as a later
@@ -418,9 +430,9 @@ the ELAN file references, both in the session.
    the keeper generates FROM FLEx, where the paragraph structure is already known: FLEx's own
    `<paragraph>` grouping should become one paragraph annotation spanning its phrases, so the .eaf
    reads as the analysis actually stands rather than as an invitation to rebuild it. `serializeEaf`
-   therefore needs a mode — the app keeps the split-per-phrase default, the keeper asks for the
-   grouped one — and the reverse trip (ELAN's paragraph tier back into FLEx paragraphs) is the
-   question that comes with it. Not scoped here; the note exists so the design is not lost.
+   therefore needs a mode: the app keeps the split-per-phrase default, the keeper asks for the
+   grouped one. There is no reverse trip to design — the mirror is one way (see below). Not scoped
+   here; the note exists so the design is not lost.
 
 **Corpus checklist — not a separate app in the end** (Seth, 2026-09-06: "I don't think corpus
 checklist needs to stay a separate app, but once we're ready to integrate it, I'll need help
