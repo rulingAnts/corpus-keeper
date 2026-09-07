@@ -211,7 +211,9 @@ Sessions/<Abbreviation-or-slug>/
                                    Device/Microphone from the recorder's provenance (bext) when known
   <slug>.wav.annotations.eaf       ALWAYS present, ALWAYS generated: our ELAN writer (FLEx profile, every
                                    analysis language, plus morpheme form and lex-gloss tiers where FLEx
-                                   has them — suite change 7), regenerated from FLEx on every sync so it reflects
+                                   has them — suite change 7; later, the paragraph tier grouped as FLEx
+                                   actually has it rather than split per phrase — suite change 8),
+                                   regenerated from FLEx on every sync so it reflects
                                    the source of truth (Seth, 2026-09-06). A NON-FLEx-DEPENDENT SNAPSHOT
                                    (Seth, 2026-09-06): plain text values only — baseline, words, morpheme
                                    forms, glosses, translations, notes, speaker names, times — with no
@@ -405,6 +407,20 @@ the ELAN file references, both in the session.
    optional and off by default. Words without morphemes simply have no morph annotations. The `.pfsx`
    sidecar orders them under their word. The listening page may show the morpheme line later; not
    in this plan. Tests extend `test/multi-analysis-ws.test.mjs` with a morpheme fixture.
+8. **The ELAN paragraph tier mirrors FLEx's real paragraphs** (Seth, 2026-09-07: "one of the things
+   we want it to do eventually is automatically mirror the paragraph and phrase tiers of the FLEx
+   data in the ELAN eaf file (which our app already exports with both tiers)" — recorded as a later
+   item, not phase 1). The suite's ELAN writer already emits both structural tiers, but the
+   PARAGRAPH tier currently mirrors the phrase tier annotation-for-annotation, one paragraph
+   annotation per phrase sharing its time slots. That is right for the app, where the paragraph
+   structure does not exist yet and ELAN can merge annotations but not split ones with dependents,
+   so starting maximally split lets a user build the structure by joining. It is wrong for a file
+   the keeper generates FROM FLEx, where the paragraph structure is already known: FLEx's own
+   `<paragraph>` grouping should become one paragraph annotation spanning its phrases, so the .eaf
+   reads as the analysis actually stands rather than as an invitation to rebuild it. `serializeEaf`
+   therefore needs a mode — the app keeps the split-per-phrase default, the keeper asks for the
+   grouped one — and the reverse trip (ELAN's paragraph tier back into FLEx paragraphs) is the
+   question that comes with it. Not scoped here; the note exists so the design is not lost.
 
 **Corpus checklist — not a separate app in the end** (Seth, 2026-09-06: "I don't think corpus
 checklist needs to stay a separate app, but once we're ready to integrate it, I'll need help
