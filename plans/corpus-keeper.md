@@ -431,7 +431,7 @@ person importing their own work, not the corpus mirroring itself backwards.
    `<paragraph>` grouping should become one paragraph annotation spanning its phrases, so the .eaf
    reads as the analysis actually stands rather than as an invitation to rebuild it. `serializeEaf`
    therefore needs a mode: the app keeps the split-per-phrase default, the keeper asks for the
-   grouped one. There is no reverse trip to design — the mirror is one way (see below). Not scoped
+   grouped one. There is no reverse trip to design — the mirror is one way (see the rule above). Not scoped
    here; the note exists so the design is not lost.
 
 **Corpus checklist — not a separate app in the end** (Seth, 2026-09-06: "I don't think corpus
